@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="
+		 http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
+		 http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-2.5.xsd
+		 http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-2.5.xsd">
+	<context:annotation-config />
+	<context:component-scan base-package="com.bskyb.appn" />
+
+	<bean id="itunesPooledHttpClient" class="org.apache.commons.httpclient.HttpClient">
+		<constructor-arg ref="itunesMultiThreadedHttpConnectionManager" />
+		<property name="params" ref="itunesHttpClientParams" />		
+	</bean>
+
+	<bean id="itunesHttpClientParams" class="org.apache.commons.httpclient.params.HttpClientParams">
+		<property name="connectionManagerTimeout" value="1500" /> <!-- When the pool is exhausted, wait connectionManagerTimout -->
+	</bean>
+	
+	<bean id="itunesMultiThreadedHttpConnectionManager" class="org.apache.commons.httpclient.MultiThreadedHttpConnectionManager">
+		<property name="params" ref="itunesHttpConnectionManagerParams" />
+	</bean>
+
+	<!-- Measured total response time from live iTunes is 500-33000ms, their sandbox performs better 500-1500ms -->
+	<bean id="itunesHttpConnectionManagerParams" class="org.apache.commons.httpclient.params.HttpConnectionManagerParams">
+		<property name="maxTotalConnections" value="50" />
+		<property name="defaultMaxConnectionsPerHost" value="50" />
+		<property name="connectionTimeout" value="1500" />
+		<property name="soTimeout" value="1500" /> 
+	</bean>
+
+	<bean id="saffronPooledHttpClient" class="org.apache.commons.httpclient.HttpClient">
+		<constructor-arg ref="saffronMultiThreadedHttpConnectionManager" />
+		<property name="params" ref="saffronHttpClientParams" />		
+	</bean>
+
+	<bean id="saffronHttpClientParams" class="org.apache.commons.httpclient.params.HttpClientParams">
+		<property name="connectionManagerTimeout" value="1500" /> <!-- When the pool is exhausted, wait connectionManagerTimout -->
+	</bean>
+	
+	<bean id="saffronMultiThreadedHttpConnectionManager" class="org.apache.commons.httpclient.MultiThreadedHttpConnectionManager">
+		<property name="params" ref="saffronHttpConnectionManagerParams" />
+	</bean>
+
+    <!-- Measured total response time from live Saffron is 100-200ms -->
+	<bean id="saffronHttpConnectionManagerParams" class="org.apache.commons.httpclient.params.HttpConnectionManagerParams">
+		<property name="maxTotalConnections" value="50" />
+		<property name="defaultMaxConnectionsPerHost" value="50" />
+		<property name="connectionTimeout" value="1500" />
+		<property name="soTimeout" value="1500" /> 
+	</bean>
+
+	<!-- Dont use a pool for Duffer, no need for performance optimization -->
+	
+	<tx:annotation-driven transaction-manager="transactionManager" proxy-target-class="true" />
+	<bean class="org.springframework.dao.annotation.PersistenceExceptionTranslationPostProcessor" />
+
+	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+		<property name="driverClassName" value="org.hsqldb.jdbcDriver" />
+		<property name="url" value="jdbc:hsqldb:mem:appn" />
+		<property name="username" value="sa" />
+		<property name="password" value="" />
+	</bean>
+
+	<!--  bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+		<property name="driverClassName" value="${jdbc.test.driver.class}" />
+		<property name="url" value="${jdbc.test.url}" />
+		<property name="username" value="${jdbc.test.username}" />
+		<property name="password" value="${jdbc.test.password}" />
+	</bean -->
+	
+	<bean id="transactionManager" class="org.springframework.orm.jpa.JpaTransactionManager">
+		<property name="entityManagerFactory" ref="entityManagerFactory" />
+		<property name="dataSource" ref="dataSource" />
+	</bean>	
+	
+	<bean id="jpaVendorAdapter" class="org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter">
+		<property name="databasePlatform" value="org.hibernate.dialect.HSQLDialect" />
+		<property name="generateDdl" value="true" />
+	</bean>
+
+	<!-- bean id="jpaVendorAdapter" class="org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter">
+		<property name="databasePlatform" value="${jdbc.test.database.dialect}" />
+		<property name="generateDdl" value="true" />
+		<property name="showSql" value="false" />
+	</bean -->
+
+	<bean id="entityManagerFactory"
+		class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+		<property name="loadTimeWeaver">
+            <bean class="org.springframework.instrument.classloading.InstrumentationLoadTimeWeaver" />
+        </property>
+		
+		<property name="persistenceUnitName" value="appn" />
+		<property name="jpaVendorAdapter" ref="jpaVendorAdapter" />
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+	<bean id="cache" class="com.bskyb.appn.integration.caching.MockPojoCache" />
+	
+	<bean class="com.bskyb.appn.device.context.ApplicationContextUtils"/>
+	<bean id="handshakeAction" class="com.bskyb.appn.device.business.HandshakeAction" />
+	<bean id="listCatalogAction" class="com.bskyb.appn.device.business.ListCatalogAction" />
+	<bean id="listCatalogItemsAction" class="com.bskyb.appn.device.business.ListCatalogItemsAction" />
+	<bean id="subscriptionStatusAction" class="com.bskyb.appn.device.business.SubscriptionStatusAction" />
+	<bean id="contentUrlAction" class="com.bskyb.appn.device.business.ContentUrlAction" />
+	<bean id="purchaseSubscriptionAction" class="com.bskyb.appn.device.business.PurchaseSubscriptionAction" />
+	<bean id="updatePendingSubscriptionAction" class="com.bskyb.appn.device.business.UpdatePendingSubscriptionAction" />
+	<bean id="handshakeMetadataAction" class="com.bskyb.appn.device.business.NewHandshakeMetadataAction" />
+	
+	<bean id="catalogService" class="com.bskyb.appn.device.service.CatalogService"/>
+	<bean id="catBuilder" class="com.bskyb.appn.device.response.builder.CatBuilder"/>
+	<bean id="itemBuilder" class="com.bskyb.appn.device.response.builder.ItemBuilder"/>
+	<bean id="infourlBuilder" class="com.bskyb.appn.device.response.builder.InfourlBuilder"/>
+	<bean id="motdBuilder" class="com.bskyb.appn.device.response.builder.MotdBuilder"/>
+	
+	<bean id="deviceResponseFactory" class="com.bskyb.appn.device.response.DeviceResponseFactory"/>
+	<bean id="controllerRequestSupport" class="com.bskyb.appn.device.request.ControllerRequestSupport" />
+	<bean id="configurationManager" class="com.bskyb.appn.device.configuration.ConfigurationManager" />
+	<bean id="configurationFactory" class="com.bskyb.appn.device.configuration.model.impl.ConfigurationFactory">
+		<constructor-arg><value>com.bskyb.appn.device.configuration.model.impl.SerializableConfiguration</value></constructor-arg>
+	</bean>
+
+	<bean id="seleniumController" class="com.bskyb.appn.device.controller.SeleniumController" />
+	
+	<bean id="deviceDao" class="com.bskyb.appn.device.dao.DeviceDao"/>
+	<bean id="subscriptionDao" class="com.bskyb.appn.device.dao.SubscriptionDao"/>
+	<bean id="subscriptionStatusDao" class="com.bskyb.appn.device.dao.SubscriptionStatusDao"/>
+	<bean id="catalogMetadataDao" class="com.bskyb.appn.integration.feeds.videocatalog.dao.CatalogMetadataDao"/>	
+	<bean id="catalogMetadataFactory" class="com.bskyb.appn.integration.feeds.videocatalog.model.impl.CatalogMetadataFactory">
+		<constructor-arg><value>com.bskyb.appn.integration.feeds.videocatalog.model.impl.SerializableCatalogMetadata</value></constructor-arg>
+	</bean>
+	<bean id="infourlMetadataDao" class="com.bskyb.appn.content.dao.InfourlMetadataDao"/>
+	<bean id="infourlMetadataFactory" class="com.bskyb.appn.content.model.impl.InfourlMetadataFactory">
+		<constructor-arg><value>com.bskyb.appn.content.model.impl.SerializableInfourlMetadata</value></constructor-arg>
+	</bean>
+	<bean id="motdDao" class="com.bskyb.appn.content.dao.MotdDao"/>
+	<bean id="motdFactory" class="com.bskyb.appn.content.model.impl.MotdFactory">
+		<constructor-arg><value>com.bskyb.appn.content.model.impl.SerializableMotd</value></constructor-arg>
+	</bean>
+
+	<bean id="appleService" class="com.bskyb.appn.integration.security.apple.AppleService"/>
+	<bean id="saffronService" class="com.bskyb.appn.integration.contentprovider.saffron.SaffronService"/>
+
+	<bean id="catalogModelService" class="com.bskyb.appn.integration.feeds.videocatalog.CatalogModelService"/>
+	<bean id="topicSequenceGenerator" class="com.bskyb.appn.integration.feeds.videocatalog.util.SimpleTopicSequenceGenerator"/>
+	<bean id="sportVideoService" class="com.bskyb.appn.integration.feeds.videocatalog.SportVideoLocalFileService">
+		<property name="feedSource" value="/initialCatalog.xml" />
+	</bean>
+	<bean id="sportVideoLocalFileService" class="com.bskyb.appn.integration.feeds.videocatalog.SportVideoLocalFileService">
+		<property name="feedSource" value="/initialCatalog.xml" />
+	</bean>
+	<bean id="catalogBuilder" class="com.bskyb.appn.integration.feeds.videocatalog.builder.CatalogBuilder"/>
+	<bean id="catalogItemBuilder" class="com.bskyb.appn.integration.feeds.videocatalog.builder.CatalogItemBuilder"/>
+	<bean id="catalogModelBuilder" class="com.bskyb.appn.integration.feeds.videocatalog.builder.CatalogModelMerger"/>
+	
+</beans>

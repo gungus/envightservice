@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE dataset [
+<!ELEMENT dataset (
+	LOCATION*
+	)>
+	
+<!ELEMENT LOCATION EMPTY>
+<!ATTLIST LOCATION
+	ID CDATA #REQUIRED
+	LATITUDE CDATA #REQUIRED
+	LONGITUDE CDATA #REQUIRED>
+]>
+
+<dataset>
+	<LOCATION ID="1" LATITUDE="80" LONGITUDE="30" />
+</dataset>
